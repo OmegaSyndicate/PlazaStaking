@@ -1,15 +1,28 @@
-# Astrolescent Staking contract
+# DeffiPlaza Staking contract
  
 Below are the transaction manifests needed to use the contract:
 
 ## instantiate
 ```
+CALL_METHOD
+  Address("<ACCOUNT>")
+  "withdraw"
+  Address("<RESOURCE_ADDRESS_TO_STAKE>")
+  Decimal("100")
+;
+
+TAKE_ALL_FROM_WORKTOP
+  Address("<RESOURCE_ADDRESS_TO_STAKE>")
+  Bucket("tokens")
+;
+
 CALL_FUNCTION
-  Address("package_rdx1p5wvlpyy3f0mer3vux0rh9wsak2d8jng9967am5udzmakz2y5g6wzs")
+  Address("package_tdx_2_1p5nepg5dm6ssr5kuqlyd0v4y4fgmp2tgn4m0d3yttr3pj7d4n4gycw")
   "ASTRLSTAKING"
   "new"
   Address("<OWNER_BADGE>")
-  Address("<RESOURCE_ADDRESS_TO_STAKE>")
+  Bucket("tokens")
+  Address("<DAPP_DEFINITION_ADDRESS>")
 ;
 ```
 

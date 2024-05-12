@@ -1,0 +1,26 @@
+CALL_METHOD
+	Address("account_tdx_2_12ycsedykz4ke8l09k53y3gn2rs8hne8kens5kg4rn3gup33k0uld76")
+	"withdraw"
+	Address("resource_tdx_2_1tknvdyqeuavj0p8x3nxeddt5wvk7nwwst3yusa8fzvp6yzjfe5tzyu")
+	Decimal("1")
+;
+
+TAKE_ALL_FROM_WORKTOP
+	Address("resource_tdx_2_1tknvdyqeuavj0p8x3nxeddt5wvk7nwwst3yusa8fzvp6yzjfe5tzyu")
+	Bucket("tokens")
+;
+
+CALL_FUNCTION
+	Address("package_tdx_2_1p4l863cl9au68leen6690680cckkd93wuhlfke65l56kpcu5gqtay6")
+	"PlazaStaking"
+	"new"
+	Address("resource_tdx_2_1n2dclslc8a2tyag6mqhn65lxthvdln8t50u36qjr40eqy4962yannw")
+	Bucket("tokens")
+	Address("account_tdx_2_12ycsedykz4ke8l09k53y3gn2rs8hne8kens5kg4rn3gup33k0uld76")
+;
+
+CALL_METHOD
+	Address("account_tdx_2_12ycsedykz4ke8l09k53y3gn2rs8hne8kens5kg4rn3gup33k0uld76")
+   "deposit_batch"
+   Expression("ENTIRE_WORKTOP")
+;
