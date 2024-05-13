@@ -1,14 +1,23 @@
 use scrypto::prelude::*;
 
 #[blueprint]
-mod PlazaStaking {
+#[events(StakingCreatedEvent, AddStakeEvent, RemoveStakeEvent, DepositRewardsEvent)]
+mod plazastaking {
+    enable_package_royalties! {
+        new => Free;
+        add_stake => Usd(dec!(0.1));
+        remove_stake => Usd(dec!(0.1));
+        deposit_rewards => Usd(dec!(0.5));
+        set_meta => Free;
+    }
+
     // Setting the access rules
     enable_method_auth! {
         methods {
             add_stake => PUBLIC;
             remove_stake => PUBLIC;
-            airdrop => PUBLIC;
-            setmeta => PUBLIC;
+            deposit_rewards => PUBLIC;
+            set_meta => PUBLIC;
         }
     }
 
@@ -21,8 +30,8 @@ mod PlazaStaking {
             owner_badge: ResourceAddress,
             tokens: Bucket,
             dapp_def_address: ComponentAddress,
-				info_url: String,
-				description: String
+			info_url: String,
+			description: String
         ) -> Bucket {
             let token = tokens.resource_address();
             let token_manager = ResourceManager::from(token);
@@ -58,7 +67,7 @@ mod PlazaStaking {
               init {
                 "name" => format!("{} Staking", symbol), updatable;
                 "description" => description, updatable;
-					 "info_url" => info_url, updatable;
+				"info_url" => info_url, updatable;
                 "icon_url" => icon_url, updatable;
                 "tags" => vec!["Staking"], updatable;
                 "dapp_definition" => dapp_def_address, updatable;
@@ -82,30 +91,45 @@ mod PlazaStaking {
 
             // return stoken_bucket;
 
-            component.setmeta(tokens)
+            Runtime::emit_event(StakingCreatedEvent{token});
+
+            let stokens = component.add_stake(tokens);
+
+            let stoken_manager = ResourceManager::from(stokens.resource_address());
+            component.set_meta(token_manager, stoken_manager);
+
+            stokens
+        }
+
+         pub fn add_stake(&mut self, tokens: Bucket) -> Bucket {
+            let amount = tokens.amount();
+            let tokens = self.pool.contribute(tokens);
+
+            Runtime::emit_event(AddStakeEvent{amount});
+
+            tokens
         }
 
         pub fn remove_stake(&mut self, stokens: Bucket) -> Bucket {
+            let amount = stokens.amount();
             let tokens = self.pool.redeem(stokens);
-            return tokens;
+
+            Runtime::emit_event(RemoveStakeEvent{amount});
+
+            tokens
         }
 
-        pub fn add_stake(&mut self, tokens: Bucket) -> Bucket {
-            let tokens = self.pool.contribute(tokens);
-            return tokens;
-        }
-
-        pub fn airdrop(&mut self, tokens: Bucket) {
+       
+        pub fn deposit_rewards(&mut self, tokens: Bucket) {
+            let amount = tokens.amount();
             self.pool.protected_deposit(tokens);
+            
+            Runtime::emit_event(DepositRewardsEvent{amount});
+            
             return;
         }
 
-        pub fn setmeta(&mut self, tokens: Bucket) -> Bucket {
-            let token = tokens.resource_address();
-
-            let stoken_bucket = self.pool.contribute(tokens);
-
-            let token_manager = ResourceManager::from(token);
+        pub fn set_meta(&mut self, token_manager: ResourceManager, stoken_manager: ResourceManager) {
             let symbol = token_manager
                 .get_metadata("symbol")
                 .unwrap_or(Some("STAKE".to_owned()))
@@ -118,13 +142,32 @@ mod PlazaStaking {
                 Runtime::bech32_encode_address(token_manager.address())
             ));
 
-            let stoken_manager = ResourceManager::from(stoken_bucket.resource_address());
             stoken_manager.set_metadata("symbol", stoken_symbol);
             stoken_manager.set_metadata("name", stoken_name);
             stoken_manager.set_metadata("icon_url", stoken_icon);
             stoken_manager.set_metadata("stake_token", Runtime::bech32_encode_address(token_manager.address()));
 
-            stoken_bucket
+            return;
         }
     }
+}
+
+#[derive(ScryptoSbor, ScryptoEvent)]
+pub struct StakingCreatedEvent {
+    pub token: ResourceAddress
+}
+
+#[derive(ScryptoSbor, ScryptoEvent)]
+pub struct AddStakeEvent {
+    pub amount: Decimal
+}
+
+#[derive(ScryptoSbor, ScryptoEvent)]
+pub struct RemoveStakeEvent {
+    pub amount: Decimal
+}
+
+#[derive(ScryptoSbor, ScryptoEvent)]
+pub struct DepositRewardsEvent {
+    pub amount: Decimal
 }
