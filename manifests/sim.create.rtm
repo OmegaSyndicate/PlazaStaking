@@ -17,12 +17,14 @@ TAKE_ALL_FROM_WORKTOP
 ;
 
 CALL_FUNCTION
-	Address("package_sim1ph0ajrzujgefa687knz49qvpr4le37uykxmflvgskrlj8pxlu07u9l")
+	Address("package_sim1phetsx3elmknfmm3y2nrrdgn085urejgwnszx03y2ye990df7hj28y")
 	"PlazaStaking"
 	"new"
 	Address("resource_sim1tknxxxxxxxxxradxrdxxxxxxxxx009923554798xxxxxxxxxakj8n3")
 	Bucket("tokens")
 	Address("account_sim1c956qr3kxlgypxwst89j9yf24tjc7zxd4up38x37zr6q4jxdx9rhma")
+	"https://docs.astrolescent.com/astrolescent-docs/tokenomics/tokenomics#stakingicon"
+	"The ASTRL token can be staked to receive 33% of Astrolescent's fees after direct operating costs by operating the different Astrolescent products, like the aggregator, the private pool, and the validator node."
 ;
 
 CALL_METHOD

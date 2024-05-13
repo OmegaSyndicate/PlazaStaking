@@ -1,22 +1,24 @@
 CALL_METHOD
 	Address("account_tdx_2_12ycsedykz4ke8l09k53y3gn2rs8hne8kens5kg4rn3gup33k0uld76")
 	"withdraw"
-	Address("resource_tdx_2_1tknvdyqeuavj0p8x3nxeddt5wvk7nwwst3yusa8fzvp6yzjfe5tzyu")
+	Address("resource_tdx_2_1t4qwvt4v2rkgak9dlm4yxgx5enfk5r0ewqh8z5ywpn667zzrepkrjl")
 	Decimal("1")
 ;
 
 TAKE_ALL_FROM_WORKTOP
-	Address("resource_tdx_2_1tknvdyqeuavj0p8x3nxeddt5wvk7nwwst3yusa8fzvp6yzjfe5tzyu")
+	Address("resource_tdx_2_1t4qwvt4v2rkgak9dlm4yxgx5enfk5r0ewqh8z5ywpn667zzrepkrjl")
 	Bucket("tokens")
 ;
 
 CALL_FUNCTION
-	Address("package_tdx_2_1p4l863cl9au68leen6690680cckkd93wuhlfke65l56kpcu5gqtay6")
+	Address("package_tdx_2_1phdxqf9qxseay3qcach0khq3u50w7yjnrkzmxraj0egr0tltvtk4n0")
 	"PlazaStaking"
 	"new"
 	Address("resource_tdx_2_1n2dclslc8a2tyag6mqhn65lxthvdln8t50u36qjr40eqy4962yannw")
 	Bucket("tokens")
 	Address("account_tdx_2_12ycsedykz4ke8l09k53y3gn2rs8hne8kens5kg4rn3gup33k0uld76")
+	"https://docs.astrolescent.com/astrolescent-docs/tokenomics/tokenomics#stakingicon"
+	"The ASTRL token can be staked to receive 33% of Astrolescent's fees after direct operating costs by operating the different Astrolescent products, like the aggregator, the private pool, and the validator node."
 ;
 
 CALL_METHOD
