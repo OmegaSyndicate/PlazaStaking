@@ -8,7 +8,6 @@ mod plazastaking {
         add_stake => Usd(dec!(0.1));
         remove_stake => Usd(dec!(0.1));
         deposit_rewards => Usd(dec!(0.5));
-        set_meta => Free;
     }
 
     // Setting the access rules
@@ -17,7 +16,6 @@ mod plazastaking {
             add_stake => PUBLIC;
             remove_stake => PUBLIC;
             deposit_rewards => PUBLIC;
-            set_meta => PUBLIC;
         }
     }
 
@@ -33,71 +31,103 @@ mod plazastaking {
 			info_url: String,
 			description: String
         ) -> Bucket {
+
             let token = tokens.resource_address();
             let token_manager = ResourceManager::from(token);
+
+            // Set some default variables to use in the metadata later on
             let symbol = token_manager
                 .get_metadata("symbol")
                 .unwrap_or(Some("STAKE".to_owned()))
                 .unwrap_or("STAKE".to_owned());
-            // let name = token_manager.get_metadata("name").unwrap_or(Some("Token staking".to_owned())).unwrap_or("Token staking".to_owned());
             let icon_url = token_manager
                 .get_metadata("icon_url")
                 .unwrap_or(Some("https://radix.defiplaza.net/assets/img/babylon/defiplaza-badge-dapp.png".to_owned()))
                 .unwrap_or("https://radix.defiplaza.net/assets/img/babylon/defiplaza-badge-dapp.png".to_owned());
 
+            // Allocate a new address of wrapper component we're about to
+            // instantiate.
             let (address_reservation, component_address) =
                 Runtime::allocate_component_address(PlazaStaking::blueprint_id());
-            let global_component_caller_badge =
-                NonFungibleGlobalId::global_caller_badge(component_address);
-
-            // let owner_role = OwnerRole::Fixed(rule!(require(owner_badge)));
-
-            let pool = Blueprint::<OneResourcePool>::instantiate(
-                OwnerRole::Fixed(rule!(require(global_component_caller_badge.clone()))),
-                rule!(require(global_component_caller_badge)),
+            
+            // We would like to create a one-resource pool, update its metadata,
+            // and then change the owner to be the component. Thus, we will
+            // first start the owner role being the package global caller, set
+            // the metadata, and then switch it to be the component global
+            // caller badge. This is because in the current context, even after
+            // the instantiation, the global caller context is the global
+            // package.
+            let one_resource_pool = Blueprint::<OneResourcePool>::instantiate(
+                OwnerRole::Updatable(rule!(require(
+                    NonFungibleGlobalId::package_of_direct_caller_badge(
+                        Runtime::package_address()
+                    )
+                ))),
+                rule!(require(NonFungibleGlobalId::global_caller_badge(
+                    component_address
+                ))),
                 token,
                 None,
             );
 
-            let component = Self { pool }
-                .instantiate()
-                .prepare_to_globalize(OwnerRole::Fixed(rule!(require(owner_badge))))
-                .with_address(address_reservation)
-					 .metadata(metadata! {
-              init {
-                "name" => format!("{} Staking", symbol), updatable;
-                "description" => description, updatable;
-				"info_url" => info_url, updatable;
-                "icon_url" => icon_url, updatable;
-                "tags" => vec!["Staking"], updatable;
-                "dapp_definition" => dapp_def_address, updatable;
-              }
+            // Getting the address of the pool unit resource.
+            let pool_unit_resource_manager = one_resource_pool
+                .get_metadata::<_, GlobalAddress>("pool_unit")
+                .ok()
+                .and_then(|value| {
+                    value.map(ResourceAddress::try_from).and_then(Result::ok)
+                })
+                .map(ResourceManager::from)
+                .unwrap();
+
+            // Setting metadata on the pool unit.
+            let stoken_symbol = format!("s{}", symbol);
+            let stoken_name = format!("Staked {}", symbol);
+            let stoken_icon = Url::of(format!(
+                "https://assets.defiplaza.net/lptokens/{}_base.png",
+                Runtime::bech32_encode_address(token_manager.address())
+            ));
+
+            pool_unit_resource_manager.set_metadata("symbol", stoken_symbol);
+            pool_unit_resource_manager.set_metadata("name", stoken_name);
+            pool_unit_resource_manager.set_metadata("icon_url", stoken_icon);
+            pool_unit_resource_manager.set_metadata("stake_token", Runtime::bech32_encode_address(token_manager.address()));
+
+            // Setting the owner role of the one resource pool and the pool unit
+            // to be the component caller badge instead of the package caller
+            // badge.
+            let owner_role = rule!(require(
+                NonFungibleGlobalId::global_caller_badge(component_address)
+            ));
+            one_resource_pool.set_owner_role(owner_role.clone());
+            pool_unit_resource_manager.set_owner_role(owner_role);
+
+            // Instantiate the wrapper component
+            let component = Self { 
+                pool: one_resource_pool 
+            }
+            .instantiate()
+            .prepare_to_globalize(OwnerRole::Fixed(rule!(require(owner_badge))))
+            .with_address(address_reservation)
+            .metadata(metadata! {
+                init {
+                    "name" => format!("{} Staking", symbol), updatable;
+                    "description" => description, updatable;
+                    "info_url" => info_url, updatable;
+                    "icon_url" => icon_url, updatable;
+                    "tags" => vec!["Staking"], updatable;
+                    "dapp_definition" => dapp_def_address, updatable;
+                }
             })
             .globalize();
 
-            // let stoken_bucket = component.add_stake(tokens);
-
-            // let stoken_symbol = format!("s{}", symbol);
-            // let stoken_name = format!("Staked {}", symbol);
-            // let stoken_icon = Url::of(format!(
-            //     "https://assets.defiplaza.net/lptokens/{}_base.png",
-            //     Runtime::bech32_encode_address(token_manager.address()))
-            // );
-
-            // let stoken_manager = ResourceManager::from(stoken_bucket.resource_address());
-            // stoken_manager.set_metadata("symbol", stoken_symbol);
-            // stoken_manager.set_metadata("name", stoken_name);
-            // stoken_manager.set_metadata("icon_url", stoken_icon);
-
-            // return stoken_bucket;
-
+            // Emit event a new component was created
             Runtime::emit_event(StakingCreatedEvent{token});
 
+            // Add the first stake
             let stokens = component.add_stake(tokens);
 
-            let stoken_manager = ResourceManager::from(stokens.resource_address());
-            component.set_meta(token_manager, stoken_manager);
-
+            // return pool units
             stokens
         }
 
@@ -118,7 +148,6 @@ mod plazastaking {
 
             tokens
         }
-
        
         pub fn deposit_rewards(&mut self, tokens: Bucket) {
             let amount = tokens.amount();
@@ -126,27 +155,6 @@ mod plazastaking {
             
             Runtime::emit_event(DepositRewardsEvent{amount});
             
-            return;
-        }
-
-        pub fn set_meta(&mut self, token_manager: ResourceManager, stoken_manager: ResourceManager) {
-            let symbol = token_manager
-                .get_metadata("symbol")
-                .unwrap_or(Some("STAKE".to_owned()))
-                .unwrap_or("STAKE".to_owned());
-
-            let stoken_symbol = format!("s{}", symbol);
-            let stoken_name = format!("Staked {}", symbol);
-            let stoken_icon = Url::of(format!(
-                "https://assets.defiplaza.net/lptokens/{}_base.png",
-                Runtime::bech32_encode_address(token_manager.address())
-            ));
-
-            stoken_manager.set_metadata("symbol", stoken_symbol);
-            stoken_manager.set_metadata("name", stoken_name);
-            stoken_manager.set_metadata("icon_url", stoken_icon);
-            stoken_manager.set_metadata("stake_token", Runtime::bech32_encode_address(token_manager.address()));
-
             return;
         }
     }
